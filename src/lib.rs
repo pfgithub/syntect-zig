@@ -1,16 +1,16 @@
-use syntect::parsing::{ParseState, ScopeStackOp, SyntaxSet};
+use syntect::parsing::{ParseState, Scope, ScopeStack, ScopeStackOp, SyntaxSet};
 use syntect::util::LinesWithEndings;
 
 struct ParseChar {
     char: u8,
-    state: usize,
+    state: Vec<Scope>,
 }
 
 struct ParseIter {
     ps: SyntaxSet,
     parse_state: ParseState,
     wants_next_line: bool,
-    state: usize,
+    state: ScopeStack,
 
     current_line_str: Option<String>,
     current_line_idx: usize,
@@ -28,7 +28,7 @@ impl ParseIter {
             ps,
             parse_state,
             wants_next_line: true,
-            state: 0,
+            state: ScopeStack::new(),
 
             current_line_str: None,
             current_line_idx: 0,
@@ -67,9 +67,7 @@ impl ParseIter {
             // state would need to be extracted out into a seperate struct and then
             // applyOp could probably be called on that, maybe.
             let op = &line[self.next_line_option_idx].1;
-            {
-                println!("TODO apply op: {:#?}", op);
-            }
+            _ = self.state.apply(op);
             self.next_line_option_idx += 1;
         }
         self.current_line_idx += 1;
@@ -80,7 +78,7 @@ impl ParseIter {
 
         Some(ParseChar {
             char: res_byte,
-            state: self.state,
+            state: self.state.scopes.clone(),
         })
     }
 }
@@ -98,7 +96,7 @@ pub extern "C" fn syntect_demo() {
             if parser.wants_next_line {break}
             match parser.next() {
                 Some(val) => {
-                    println!("value: '{:#?}' {:#?}", val.char, val.state);
+                    println!("value: '{:#?}' {:#?}", val.char as char, val.state);
                 },
                 _ => break,
             }
