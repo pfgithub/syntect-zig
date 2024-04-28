@@ -1,12 +1,15 @@
-use syntect::parsing::{ParseState, Scope, ScopeStack, ScopeStackOp, SyntaxSet};
-use syntect::util::LinesWithEndings;
+use std::alloc::Layout;
+use std::mem;
 
-struct ParseChar {
+use syntect::parsing::{ParseState, Scope, ScopeStack, ScopeStackOp, SyntaxSet};
+
+#[derive(Clone, Copy)]
+pub struct ParseChar {
     char: u8,
-    state: Vec<Scope>,
+    scope: Option<Scope>,
 }
 
-struct ParseIter {
+pub struct ParseIter {
     ps: SyntaxSet,
     parse_state: ParseState,
     wants_next_line: bool,
@@ -78,30 +81,125 @@ impl ParseIter {
 
         Some(ParseChar {
             char: res_byte,
-            state: self.state.scopes.clone(),
+            scope: self.state.scopes.last().copied(),
         })
     }
 }
 
 #[no_mangle]
-pub extern "C" fn syntect_demo() {
-    let s = "pub struct Wow { hi: u64 }\nfn blah() -> u64 {}\n";
+pub extern "C" fn syntect_create(lang_ptr: *const u8, lang_len: usize) -> *mut ParseIter {
+    let lang = unsafe {
+        std::slice::from_raw_parts(lang_ptr, lang_len)
+    };
 
-    let mut parser = ParseIter::init("rs");
+    // Convert the byte slice to a string slice
+    let lang_str = match std::str::from_utf8(lang) {
+        Ok(str) => str,
+        Err(_) => return core::ptr::null::<ParseIter>() as *mut ParseIter,
+    };
 
-    for line in LinesWithEndings::from(s) {
-        parser.add_line(line);
+    // Allocate memory for ParseIter
+    let layout = Layout::from_size_align(
+        mem::size_of::<ParseIter>(),
+        mem::align_of::<ParseIter>(),
+    ).expect("Bad layout");
 
-        loop {
-            if parser.wants_next_line {break}
-            match parser.next() {
-                Some(val) => {
-                    println!("value: '{:#?}' {:#?}", val.char as char, val.state);
-                },
-                _ => break,
-            }
-        }
+    let res = unsafe { std::alloc::alloc(layout) as *mut ParseIter };
+    
+    unsafe {
+        res.write(ParseIter::init(lang_str));
     }
+    res
+}
+
+#[no_mangle]
+pub extern "C" fn syntect_destroy(value_ptr: *mut ParseIter) -> () {
+    unsafe {
+        std::ptr::drop_in_place(value_ptr); // Explicitly call destructor
+        let layout = Layout::from_size_align(
+            mem::size_of::<ParseIter>(),
+            mem::align_of::<ParseIter>(),
+        ).expect("Bad layout");
+        std::alloc::dealloc(value_ptr as *mut u8, layout); // Free the memory
+    }
+}
+
+/// false indicates utf-8 error
+#[no_mangle]
+pub extern "C" fn syntect_add_line(syntect: *mut ParseIter, line_ptr: *const u8, line_len: usize) -> bool {
+    let line = unsafe {
+        std::slice::from_raw_parts(line_ptr, line_len)
+    };
+
+    // Convert the byte slice to a string slice
+    let line_str = match std::str::from_utf8(line) {
+        Ok(str) => str,
+        Err(_) => return false,
+    };
+
+    unsafe {
+        (*syntect).add_line(line_str);
+    }
+    return true;
+}
+
+#[no_mangle]
+pub extern "C" fn syntect_wants_next_line(syntect: *mut ParseIter) -> bool {
+    unsafe {
+        (*syntect).wants_next_line
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn syntect_next(syntect: *mut ParseIter, out_char: *mut ParseChar) -> bool {
+    let result = unsafe {
+        (*syntect).next()
+    };
+    match result {
+        Some(value) => {
+            unsafe {
+                out_char.write(value);
+            }
+            true
+        },
+        None => {
+            false
+        },
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn parsechar_create() -> *mut ParseChar {
+    let layout = Layout::from_size_align(
+        mem::size_of::<ParseChar>(),
+        mem::align_of::<ParseChar>(),
+    ).expect("Bad layout");
+
+    let res = unsafe { std::alloc::alloc(layout) as *mut ParseChar };
+    
+    res
+}
+#[no_mangle]
+pub extern "C" fn parsechar_deinit(value_ptr: *mut ParseChar) {
+    unsafe {
+        std::ptr::drop_in_place(value_ptr);
+    }
+}
+#[no_mangle]
+pub extern "C" fn parsechar_destroy(value_ptr: *mut ParseChar) {
+    unsafe {
+        let layout = Layout::from_size_align(
+            mem::size_of::<ParseChar>(),
+            mem::align_of::<ParseChar>(),
+        ).expect("Bad layout");
+        std::alloc::dealloc(value_ptr as *mut u8, layout);
+    }
+}
+#[no_mangle]
+pub extern "C" fn parsechar_print(value_ptr: *mut ParseChar) {
+    let value = unsafe { *value_ptr };
+
+    println!("value: '{:#?}' {:#?}", value.char as char, value.scope);
 }
 
 #[no_mangle]
