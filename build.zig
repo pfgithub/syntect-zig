@@ -81,7 +81,7 @@ pub fn build(b: *std.Build) void {
     const object_file_generated: *std.Build.GeneratedFile = b.allocator.create(std.Build.GeneratedFile) catch @panic("oom");
     object_file_generated.* = .{
         .step = &build_command.step,
-        .path = b.fmt("target/{s}/{s}/libsyntect_zig.{s}", .{ build_target.items, build_profile, ext }),
+        .path = b.pathFromRoot(b.fmt("target/{s}/{s}/libsyntect_zig.{s}", .{ build_target.items, build_profile, ext })),
     };
     const object_file_path: std.Build.LazyPath = .{ .generated = object_file_generated };
 
@@ -94,7 +94,7 @@ pub fn build(b: *std.Build) void {
     // fakeunwind.want_lto = false;
 
     const module = b.addModule("syntect", std.Build.Module.CreateOptions{
-        .root_source_file = .{ .path = "src/root.zig" },
+        .root_source_file = std.Build.LazyPath.relative("src/root.zig"),
         .optimize = optimize,
         .target = target,
     });
@@ -112,7 +112,7 @@ pub fn build(b: *std.Build) void {
 
     const demo_exe = b.addExecutable(.{
         .name = "demo",
-        .root_source_file = .{ .path = "example/demo.zig" },
+        .root_source_file = std.Build.LazyPath.relative("example/demo.zig"),
         .target = target,
         .optimize = optimize,
     });
