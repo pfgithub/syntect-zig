@@ -1,0 +1,24 @@
+.{
+    .name = "syntect-zig",
+    .version = "0.0.0",
+
+    .dependencies = .{
+        .syntect = .{
+            .url = "https://github.com/trishume/syntect/archive/refs/tags/v5.2.0.tar.gz",
+            .hash = "1220dc113096dfcf5f594ba79b8f345caefebbcab758451e0c1756ee6171e8e342d3",
+        },
+    },
+    .paths = .{
+        // This makes *all* files, recursively, included in this package. It is generally
+        // better to explicitly list the files and directories instead, to insure that
+        // fetching from tarballs, file system paths, and version control all result
+        // in the same contents hash.
+        "",
+        // For example...
+        //"build.zig",
+        //"build.zig.zon",
+        //"src",
+        //"LICENSE",
+        //"README.md",
+    },
+}
