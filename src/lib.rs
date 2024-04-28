@@ -64,6 +64,8 @@ impl ParseIter {
         while self.next_line_option_idx < line.len() && line[self.next_line_option_idx].0 < self.current_line_idx {
             // can't make this a function because not allowed to have &mut self and a & reference to a thing in self
             // even though that's completely fine and ok? rust just doesn't allow it.
+            // state would need to be extracted out into a seperate struct and then
+            // applyOp could probably be called on that, maybe.
             let op = &line[self.next_line_option_idx].1;
             {
                 println!("TODO apply op: {:#?}", op);
