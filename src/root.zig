@@ -4,7 +4,7 @@ pub extern fn add(a: i32, b: i32) i32;
 
 pub const ParseIter = opaque {
     pub fn create(lang: []const u8) !*ParseIter {
-        return syntect_create(lang.ptr, lang.len) orelse return error.InvalidUtf8;
+        return syntect_create(lang.ptr, lang.len) orelse return error.InvalidLanguage;
     }
     pub const destroy = syntect_destroy;
 

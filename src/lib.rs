@@ -21,13 +21,16 @@ pub struct ParseIter {
     current_line: Option<Vec<(usize, ScopeStackOp)>>,
 }
 impl ParseIter {
-    pub fn init(language: &str) -> ParseIter {
+    pub fn init(language: &str) -> Option<ParseIter> {
         let ps = SyntaxSet::load_defaults_newlines();
-        let syntax = ps.find_syntax_by_extension(language).unwrap();
+        let syntax = match ps.find_syntax_by_extension(language) {
+            Some(v) => v,
+            None => return None,
+        };
 
         let parse_state = ParseState::new(syntax);
 
-        ParseIter {
+        Some(ParseIter {
             ps,
             parse_state,
             wants_next_line: true,
@@ -37,7 +40,7 @@ impl ParseIter {
             current_line_idx: 0,
             next_line_option_idx: 0,
             current_line: None,
-        }
+        })
     }
 
     pub fn add_line(&mut self, line: &str) -> () {
@@ -107,7 +110,10 @@ pub extern "C" fn syntect_create(lang_ptr: *const u8, lang_len: usize) -> *mut P
     let res = unsafe { std::alloc::alloc(layout) as *mut ParseIter };
     
     unsafe {
-        res.write(ParseIter::init(lang_str));
+        res.write(match ParseIter::init(lang_str) {
+            Some(v) => v,
+            None => return core::ptr::null::<ParseIter>() as *mut ParseIter,
+        });
     }
     res
 }
