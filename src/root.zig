@@ -19,6 +19,10 @@ pub const ParseChar = opaque {
     pub const deinit = parsechar_deinit;
     pub const destroy = parsechar_destroy;
     pub const print = parsechar_print;
+    pub const getChar = parsechar_get_char;
+    pub fn getScopes(char: *ParseChar, buf: []u8) usize {
+        return parsechar_get_scopes(char, buf.ptr, buf.len);
+    }
 };
 
 extern fn syntect_create(lang_ptr: [*]const u8, lang_len: usize) ?*ParseIter;
@@ -32,3 +36,5 @@ extern fn parsechar_create() *ParseChar;
 extern fn parsechar_deinit(char: *ParseChar) void;
 extern fn parsechar_destroy(char: *ParseChar) void;
 extern fn parsechar_print(char: *ParseChar) void;
+extern fn parsechar_get_char(char: *ParseChar) u8;
+extern fn parsechar_get_scopes(char: *ParseChar, buf_ptr: [*]u8, buf_len: usize) usize;

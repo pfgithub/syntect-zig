@@ -1,4 +1,4 @@
-use std::alloc::Layout;
+use std::{alloc::Layout, cmp::min};
 use std::mem;
 
 use syntect::parsing::{ParseState, Scope, ScopeStack, ScopeStackOp, SyntaxSet};
@@ -202,10 +202,37 @@ pub extern "C" fn parsechar_destroy(value_ptr: *mut ParseChar) {
     }
 }
 #[no_mangle]
-pub extern "C" fn parsechar_print(value_ptr: *mut ParseChar) {
+pub extern "C" fn parsechar_print(value_ptr: *mut ParseChar) -> () {
     let value = unsafe { *value_ptr };
 
     println!("value: '{:#?}' {:#?}", value.char as char, value.scope);
+}
+#[no_mangle]
+pub extern "C" fn parsechar_get_char(value_ptr: *mut ParseChar) -> u8 {
+    let value = unsafe { *value_ptr };
+
+    value.char
+}
+#[no_mangle]
+pub extern "C" fn parsechar_get_scopes(value_ptr: *mut ParseChar, buf_ptr: *mut u8, buf_len: usize) -> usize {
+    let buf = unsafe {
+        std::slice::from_raw_parts_mut(buf_ptr, buf_len)
+    };
+
+    let value = unsafe { *value_ptr };
+
+    match value.scope {
+        Some(v) => {
+            let string = v.build_string();
+            let str_bytes = string.as_bytes();
+            let min_len = min(string.len(), buf.len());
+            buf[0..min_len].copy_from_slice(&str_bytes[0..min_len]);
+            string.len()
+        },
+        None => {
+            0
+        },
+    }
 }
 
 #[no_mangle]
