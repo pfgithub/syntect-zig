@@ -1,7 +1,7 @@
 use std::{alloc::Layout, cmp::min};
 use std::mem;
 
-use syntect::parsing::{ParseState, Scope, ScopeStack, ScopeStackOp, SyntaxSet};
+use syntect::parsing::{ParseState, Scope, ScopeStack, ScopeStackOp, SyntaxDefinition, SyntaxSet, SyntaxSetBuilder};
 
 #[derive(Clone, Copy)]
 pub struct ParseChar {
@@ -10,7 +10,7 @@ pub struct ParseChar {
 }
 
 pub struct ParseIter {
-    ps: SyntaxSet,
+    ps: *mut SyntaxSet,
     parse_state: ParseState,
     wants_next_line: bool,
     state: ScopeStack,
@@ -21,9 +21,8 @@ pub struct ParseIter {
     current_line: Option<Vec<(usize, ScopeStackOp)>>,
 }
 impl ParseIter {
-    pub fn init(language: &str) -> Option<ParseIter> {
-        let ps = SyntaxSet::load_defaults_newlines();
-        let syntax = match ps.find_syntax_by_extension(language) {
+    pub fn init(ps: *mut SyntaxSet, language: &str) -> Option<ParseIter> {
+        let syntax = match unsafe{&*ps}.find_syntax_by_extension(language) {
             Some(v) => v,
             None => return None,
         };
@@ -47,7 +46,7 @@ impl ParseIter {
         if !self.wants_next_line {panic!("not wants next line")}
         self.wants_next_line = false;
         self.current_line_str = Some(line.into());
-        self.current_line = Some(self.parse_state.parse_line(line, &self.ps).unwrap());
+        self.current_line = Some(self.parse_state.parse_line(line, unsafe{&*self.ps}).unwrap());
         self.current_line_idx = 0;
         self.next_line_option_idx = 0;
     }
@@ -89,8 +88,95 @@ impl ParseIter {
     }
 }
 
+// if we export the layouts, we could have zig do the allocation if we were so inclined
+
 #[no_mangle]
-pub extern "C" fn syntect_create(lang_ptr: *const u8, lang_len: usize) -> *mut ParseIter {
+pub extern "C" fn syntaxsetbuilder_create() -> *mut SyntaxSetBuilder {
+    let layout = Layout::from_size_align(
+        mem::size_of::<SyntaxSetBuilder>(),
+        mem::align_of::<SyntaxSetBuilder>(),
+    ).expect("Bad layout");
+
+    let res = unsafe { std::alloc::alloc(layout) as *mut SyntaxSetBuilder };
+    
+    res
+}
+#[no_mangle]
+pub extern "C" fn syntaxsetbuilder_deallocate(value_ptr: *mut SyntaxSetBuilder) {
+    unsafe {
+        let layout = Layout::from_size_align(
+            mem::size_of::<SyntaxSetBuilder>(),
+            mem::align_of::<SyntaxSetBuilder>(),
+        ).expect("Bad layout");
+        std::alloc::dealloc(value_ptr as *mut u8, layout);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn syntaxsetbuilder_add(syntax_set_builder_ptr: *mut SyntaxSetBuilder, definition_ptr: *const u8, definition_len: usize) -> bool {
+    // syntaxsetbuilder::new()
+    // let ps = SyntaxSet::load_defaults_newlines();
+
+    let lang = unsafe {
+        std::slice::from_raw_parts(definition_ptr, definition_len)
+    };
+
+    // Convert the byte slice to a string slice
+    let lang_str = match std::str::from_utf8(lang) {
+        Ok(str) => str,
+        Err(_) => return false,
+    };
+
+    let syntax_definition = match SyntaxDefinition::load_from_str(lang_str, true, None) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+
+    unsafe{ (*syntax_set_builder_ptr).add(syntax_definition); }
+
+    true
+}
+/// warning: deinitializes syntax_set. i think.
+#[no_mangle]
+pub extern "C" fn syntaxsetbuilder_build(syntax_set_builder: *mut SyntaxSetBuilder, syntax_set: *mut SyntaxSet) -> () {
+    unsafe {
+        syntax_set.write(syntax_set_builder.read().build());
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn syntaxset_allocate() -> *mut SyntaxSet {
+    let layout = Layout::from_size_align(
+        mem::size_of::<SyntaxSet>(),
+        mem::align_of::<SyntaxSet>(),
+    ).expect("Bad layout");
+    unsafe { std::alloc::alloc(layout) as *mut SyntaxSet }
+}
+#[no_mangle]
+pub extern "C" fn syntaxset_init_defaults(syntax_set: *mut SyntaxSet) -> () {
+    unsafe {
+        syntax_set.write(SyntaxSet::load_defaults_newlines());
+    }
+}
+#[no_mangle]
+pub extern "C" fn syntaxset_deinit(syntax_set: *mut SyntaxSet) -> () {
+    unsafe {
+        std::ptr::drop_in_place(syntax_set);
+    }
+}
+#[no_mangle]
+pub extern "C" fn syntaxset_deallocate(syntax_set: *mut SyntaxSet) -> () {
+    let layout = Layout::from_size_align(
+        mem::size_of::<SyntaxSet>(),
+        mem::align_of::<SyntaxSet>(),
+    ).expect("Bad layout");
+    unsafe {
+        std::alloc::dealloc(syntax_set as *mut u8, layout);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn syntect_create(ps: *mut SyntaxSet, lang_ptr: *const u8, lang_len: usize) -> *mut ParseIter {
     let lang = unsafe {
         std::slice::from_raw_parts(lang_ptr, lang_len)
     };
@@ -110,7 +196,7 @@ pub extern "C" fn syntect_create(lang_ptr: *const u8, lang_len: usize) -> *mut P
     let res = unsafe { std::alloc::alloc(layout) as *mut ParseIter };
     
     unsafe {
-        res.write(match ParseIter::init(lang_str) {
+        res.write(match ParseIter::init(ps, lang_str) {
             Some(v) => v,
             None => return core::ptr::null::<ParseIter>() as *mut ParseIter,
         });
@@ -192,7 +278,7 @@ pub extern "C" fn parsechar_deinit(value_ptr: *mut ParseChar) {
     }
 }
 #[no_mangle]
-pub extern "C" fn parsechar_destroy(value_ptr: *mut ParseChar) {
+pub extern "C" fn parsechar_deallocate(value_ptr: *mut ParseChar) {
     unsafe {
         let layout = Layout::from_size_align(
             mem::size_of::<ParseChar>(),
