@@ -85,13 +85,13 @@ pub fn build(b: *std.Build) void {
     };
     const object_file_path: std.Build.LazyPath = .{ .generated = object_file_generated };
 
-    const fakeunwind = b.addObject(.{
-        .name = "fakeunwind",
-        .root_source_file = .{ .path = "src/fakeunwind.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
-    fakeunwind.want_lto = false;
+    // const fakeunwind = b.addObject(.{
+    //     .name = "fakeunwind",
+    //     .root_source_file = .{ .path = "src/fakeunwind.zig" },
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    // fakeunwind.want_lto = false;
 
     const module = b.addModule("syntect", std.Build.Module.CreateOptions{
         .root_source_file = .{ .path = "src/root.zig" },
@@ -100,7 +100,15 @@ pub fn build(b: *std.Build) void {
     });
     module.link_libc = true;
     module.addObjectFile(object_file_path);
-    module.addObject(fakeunwind);
+    // module.addObject(fakeunwind);
+    // seems to be ok for cross compilation? it's provided by zig itself
+    module.linkSystemLibrary("unwind", .{
+        .needed = true,
+        .weak = false,
+        .use_pkg_config = .no,
+        .preferred_link_mode = .Static,
+        .search_strategy = .no_fallback,
+    });
 
     const demo_exe = b.addExecutable(.{
         .name = "demo",
