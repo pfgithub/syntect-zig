@@ -31,7 +31,7 @@ pub const ParseIter = opaque {
     pub const next = syntect_next;
 };
 pub const ParseChar = opaque {
-    pub const create = parsechar_create;
+    pub const allocate = parsechar_allocate;
     pub const deinit = parsechar_deinit;
     pub const deallocate = parsechar_deallocate;
     pub const print = parsechar_print;
@@ -58,7 +58,7 @@ extern fn syntect_add_line(syntect: *ParseIter, line_ptr: [*]const u8, line_len:
 extern fn syntect_wants_next_line(syntect: *ParseIter) bool;
 extern fn syntect_next(syntect: *ParseIter, out_char: *ParseChar) bool;
 
-extern fn parsechar_create() *ParseChar;
+extern fn parsechar_allocate() *ParseChar;
 extern fn parsechar_deinit(char: *ParseChar) void;
 extern fn parsechar_deallocate(char: *ParseChar) void;
 extern fn parsechar_print(char: *ParseChar) void;

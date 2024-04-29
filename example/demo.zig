@@ -20,7 +20,7 @@ pub fn main() !void {
 
     const parser = try syntect.ParseIter.create(syntax_set, "example");
     defer parser.destroy();
-    const char = syntect.ParseChar.create();
+    const char = syntect.ParseChar.allocate();
     defer char.deallocate();
     var buf: [128]u8 = undefined;
     for (&[_][]const u8{ "red green\n", "green red\n" }) |line| {

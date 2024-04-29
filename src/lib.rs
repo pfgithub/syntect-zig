@@ -267,7 +267,7 @@ pub extern "C" fn syntect_next(syntect: *mut ParseIter, out_char: *mut ParseChar
 }
 
 #[no_mangle]
-pub extern "C" fn parsechar_create() -> *mut ParseChar {
+pub extern "C" fn parsechar_allocate() -> *mut ParseChar {
     let layout = Layout::from_size_align(
         mem::size_of::<ParseChar>(),
         mem::align_of::<ParseChar>(),
