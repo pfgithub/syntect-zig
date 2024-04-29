@@ -66,7 +66,7 @@ impl ParseIter {
 
         let res_byte = res_chars[self.current_line_idx];
 
-        while self.next_line_option_idx < line.len() && line[self.next_line_option_idx].0 < self.current_line_idx {
+        while self.next_line_option_idx < line.len() && self.current_line_idx >= line[self.next_line_option_idx].0 {
             // can't make this a function because not allowed to have &mut self and a & reference to a thing in self
             // even though that's completely fine and ok? rust just doesn't allow it.
             // state would need to be extracted out into a seperate struct and then
