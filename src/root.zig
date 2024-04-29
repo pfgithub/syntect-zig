@@ -2,6 +2,15 @@ const std = @import("std");
 
 pub extern fn add(a: i32, b: i32) i32;
 
+pub const SyntaxSetBuilder = opaque {
+    pub const create = syntaxsetbuilder_create;
+    pub const deallocate = syntaxsetbuilder_deallocate;
+    pub fn add(ssb: *SyntaxSetBuilder, tmlanguage: []const u8) !void {
+        if (!syntaxsetbuilder_add(ssb, tmlanguage.ptr, tmlanguage.len)) return error.TmlParseFailed;
+    }
+    pub const buildAndDeinit = syntaxsetbuilder_build_and_deinit;
+};
+
 pub const SyntaxSet = opaque {
     pub const allocate = syntaxset_allocate;
     pub const initDefaults = syntaxset_init_defaults;
@@ -31,6 +40,11 @@ pub const ParseChar = opaque {
         return parsechar_get_scopes(char, buf.ptr, buf.len);
     }
 };
+
+extern fn syntaxsetbuilder_create() *SyntaxSetBuilder;
+extern fn syntaxsetbuilder_deallocate(ssb: *SyntaxSetBuilder) void;
+extern fn syntaxsetbuilder_add(builder: *SyntaxSetBuilder, tmlanguage_ptr: [*]const u8, tmlanguage_len: usize) bool;
+extern fn syntaxsetbuilder_build_and_deinit(builder: *SyntaxSetBuilder, output_set: *SyntaxSet) void;
 
 extern fn syntaxset_allocate() *SyntaxSet;
 extern fn syntaxset_init_defaults(syntax_set: *SyntaxSet) void;

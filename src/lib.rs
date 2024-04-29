@@ -124,21 +124,27 @@ pub extern "C" fn syntaxsetbuilder_add(syntax_set_builder_ptr: *mut SyntaxSetBui
     // Convert the byte slice to a string slice
     let lang_str = match std::str::from_utf8(lang) {
         Ok(str) => str,
-        Err(_) => return false,
+        Err(emsg) => {
+            println!("Error utf-8: {}", emsg);
+            return false;
+        }
     };
 
     let syntax_definition = match SyntaxDefinition::load_from_str(lang_str, true, None) {
         Ok(v) => v,
-        Err(_) => return false,
+        Err(emsg) => {
+            println!("Error parsing syntax file: {}", emsg);
+            return false;
+        }
     };
 
     unsafe{ (*syntax_set_builder_ptr).add(syntax_definition); }
 
     true
 }
-/// warning: deinitializes syntax_set. i think.
+
 #[no_mangle]
-pub extern "C" fn syntaxsetbuilder_build(syntax_set_builder: *mut SyntaxSetBuilder, syntax_set: *mut SyntaxSet) -> () {
+pub extern "C" fn syntaxsetbuilder_build_and_deinit(syntax_set_builder: *mut SyntaxSetBuilder, syntax_set: *mut SyntaxSet) -> () {
     unsafe {
         syntax_set.write(syntax_set_builder.read().build());
     }

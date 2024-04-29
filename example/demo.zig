@@ -7,15 +7,23 @@ pub fn main() !void {
     const syntax_set = syntect.SyntaxSet.allocate();
     defer syntax_set.deallocate();
 
-    syntax_set.initDefaults();
+    const ssb = syntect.SyntaxSetBuilder.create();
+    defer ssb.deallocate();
+    {
+        // errdefer ssb.deinit(); //not implemented
+        try ssb.add(@embedFile("sample.sublime-syntax"));
+    }
+
+    ssb.buildAndDeinit(syntax_set);
+    // syntax_set.initDefaults();
     defer syntax_set.deinit();
 
-    const parser = try syntect.ParseIter.create(syntax_set, "rs");
+    const parser = try syntect.ParseIter.create(syntax_set, "example");
     defer parser.destroy();
     const char = syntect.ParseChar.create();
     defer char.deallocate();
     var buf: [128]u8 = undefined;
-    for (&[_][]const u8{ "pub struct Wow { hi: u64 }\n", "fn blah() -> u64 {}\n" }) |line| {
+    for (&[_][]const u8{ "red green\n", "green red\n" }) |line| {
         try parser.addLine(line);
         while (!parser.wantsNextLine()) {
             if (parser.next(char)) {

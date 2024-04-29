@@ -1,0 +1,47 @@
+name                   = example
+file_extensions []     = example;
+
+################################################################
+## Styles
+################################################################
+
+styles [] {
+
+.red : style {
+   color = #FF0000
+   textmate_scope = red
+}
+.green : style {
+   color = #00FF00
+   textmate_scope = green
+}
+
+}
+
+#################################################
+## Parse contexts
+#################################################
+
+contexts [] {
+
+##############################################
+## Main Context - Entry point context
+##############################################
+
+main : context {
+   # Comment
+   : pattern {
+      regex          \= (red)
+      styles []       = .red;
+   }
+   : pattern {
+      regex          \= (green)
+      styles []       = .green;
+   }
+}
+
+#################################################
+## End of Contexts
+#################################################
+   
+}

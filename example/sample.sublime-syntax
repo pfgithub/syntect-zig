@@ -1,0 +1,17 @@
+%YAML 1.2
+---
+name: example
+scope: source.example
+file_extensions: [ example ]
+
+contexts:
+  main:
+    - match: '(red)'
+      captures:
+        0: red.example
+    - match: '(green)'
+      captures:
+        0: green.example
+    - match: '(.)'
+      captures:
+        0: text.example
