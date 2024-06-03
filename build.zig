@@ -83,18 +83,18 @@ pub fn build(b: *std.Build) void {
         .step = &build_command.step,
         .path = b.pathFromRoot(b.fmt("target/{s}/{s}/libsyntect_zig.{s}", .{ build_target.items, build_profile, ext })),
     };
-    const object_file_path: std.Build.LazyPath = .{ .generated = object_file_generated };
+    const object_file_path: std.Build.LazyPath = .{ .generated = .{ .file = object_file_generated } };
 
     // const fakeunwind = b.addObject(.{
     //     .name = "fakeunwind",
-    //     .root_source_file = .{ .path = "src/fakeunwind.zig" },
+    //     .root_source_file = b.path("src/fakeunwind.zig"),
     //     .target = target,
     //     .optimize = optimize,
     // });
     // fakeunwind.want_lto = false;
 
     const module = b.addModule("syntect", std.Build.Module.CreateOptions{
-        .root_source_file = std.Build.LazyPath.relative("src/root.zig"),
+        .root_source_file = b.path("src/root.zig"),
         .optimize = optimize,
         .target = target,
     });
@@ -106,13 +106,13 @@ pub fn build(b: *std.Build) void {
         .needed = true,
         .weak = false,
         .use_pkg_config = .no,
-        .preferred_link_mode = .Static,
+        .preferred_link_mode = .static,
         .search_strategy = .no_fallback,
     });
 
     const demo_exe = b.addExecutable(.{
         .name = "demo",
-        .root_source_file = std.Build.LazyPath.relative("example/demo.zig"),
+        .root_source_file = b.path("example/demo.zig"),
         .target = target,
         .optimize = optimize,
     });
